@@ -1,0 +1,15 @@
+{
+    "available": true,
+    "organ": "Brainstem",
+    "dataset": "HaN-Seg",
+    "split": "test",
+    "num_samples": 1121,
+    "dice": 0.7093915951379395,
+    "iou": 0.6908498129158849,
+    "precision": 0.03704083041554178,
+    "recall": 0.11446546355642402,
+    "global_dice": 0.3099779222372133,
+    "global_iou": 0.1834164927878073,
+    "global_precision": 0.18630667158127534,
+    "global_recall": 0.9220175118569865
+}

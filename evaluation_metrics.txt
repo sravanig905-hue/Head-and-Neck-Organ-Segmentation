@@ -1,0 +1,220 @@
+MULTI-ORGAN SEGMENTATION EVALUATION
+====================================
+
+Mean Dice      : 0.0027
+Mean IoU       : 0.0014
+Mean Precision : 0.0016
+Mean Recall    : 0.0260
+
+ORGAN-WISE RESULTS
+------------------------------------
+
+A_Carotid_L
+Class ID  : 1
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+A_Carotid_R
+Class ID  : 2
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Arytenoid
+Class ID  : 3
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Bone_Mandible
+Class ID  : 4
+Dice      : 0.0730
+IoU       : 0.0379
+Precision : 0.0397
+Recall    : 0.4615
+
+Brainstem
+Class ID  : 5
+Dice      : 0.0001
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0007
+
+BuccalMucosa
+Class ID  : 6
+Dice      : 0.0004
+IoU       : 0.0002
+Precision : 0.0014
+Recall    : 0.0002
+
+Cavity_Oral
+Class ID  : 7
+Dice      : 0.0060
+IoU       : 0.0030
+Precision : 0.0059
+Recall    : 0.0060
+
+Cochlea_L
+Class ID  : 8
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Cochlea_R
+Class ID  : 9
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.2264
+
+Cricopharyngeus
+Class ID  : 10
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Esophagus_S
+Class ID  : 11
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Eye_AL
+Class ID  : 12
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Eye_AR
+Class ID  : 13
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Eye_PL
+Class ID  : 14
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Eye_PR
+Class ID  : 15
+Dice      : 0.0002
+IoU       : 0.0001
+Precision : 0.0001
+Recall    : 0.0008
+
+Glnd_Lacrimal_L
+Class ID  : 16
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Glnd_Lacrimal_R
+Class ID  : 17
+Dice      : 0.0002
+IoU       : 0.0001
+Precision : 0.0001
+Recall    : 0.0854
+
+Glnd_Submand_L
+Class ID  : 18
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Glnd_Submand_R
+Class ID  : 19
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Glnd_Thyroid
+Class ID  : 20
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Glottis
+Class ID  : 21
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Larynx_SG
+Class ID  : 22
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Lips
+Class ID  : 23
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+OpticChiasm
+Class ID  : 24
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+OpticNrv_L
+Class ID  : 25
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+OpticNrv_R
+Class ID  : 26
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Parotid_L
+Class ID  : 27
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+Parotid_R
+Class ID  : 28
+Dice      : 0.0001
+IoU       : 0.0001
+Precision : 0.0017
+Recall    : 0.0001
+
+Pituitary
+Class ID  : 29
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
+
+SpinalCord
+Class ID  : 30
+Dice      : 0.0000
+IoU       : 0.0000
+Precision : 0.0000
+Recall    : 0.0000
