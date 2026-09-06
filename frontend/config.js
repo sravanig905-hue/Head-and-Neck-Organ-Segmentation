@@ -9,4 +9,4 @@
 //
 // Update this value AFTER deploying the backend to Render.
 // ─────────────────────────────────────────────────────────
-window.BACKEND_URL = "https://han-seg-backend.onrender.com";
+const API = window.BACKEND_URL || "https://head-and-neck-organ-segmentation.onrender.com";

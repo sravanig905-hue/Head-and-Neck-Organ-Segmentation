@@ -1,4 +1,4 @@
-const API = window.BACKEND_URL || "https://han-seg-backend.onrender.com"
+const API = window.BACKEND_URL || "https://head-and-neck-organ-segmentation.onrender.com";
 let file=null,volumeId=null,total=0,slice=0,uploading=false,analyzing=false;
 
 const $=id=>document.getElementById(id);
