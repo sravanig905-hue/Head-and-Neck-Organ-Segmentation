@@ -1,4 +1,4 @@
-const API = window.BACKEND_URL || "http://127.0.0.1:5000";
+const API = window.BACKEND_URL || "https://han-seg-backend.onrender.com"
 let file=null,volumeId=null,total=0,slice=0,uploading=false,analyzing=false;
 
 const $=id=>document.getElementById(id);
