@@ -1,0 +1,70 @@
+{
+    "project": "Head & Neck Organ Segmentation",
+    "model": "Hybrid U-Net + Transformer",
+    "task": "Multi-class Multi-organ Semantic Segmentation",
+    "num_classes": 31,
+    "num_organs": 30,
+    "background_class": 0,
+    "dataset": {
+        "name": "HaN-Seg",
+        "total_cases": 42,
+        "train_cases": 29,
+        "validation_cases": 6,
+        "test_cases": 7,
+        "split_method": "Case-level split",
+        "random_seed": 42
+    },
+    "training": {
+        "optimizer": "AdamW",
+        "loss": "CrossEntropyLoss + DiceLoss",
+        "learning_rate": 0.0001,
+        "batch_size": 2,
+        "epochs_completed": 5,
+        "status": "Completed CPU training"
+    },
+    "evaluation": {
+        "available": true,
+        "status": "COMPLETED",
+        "test_samples": 1040,
+        "accuracy": 0.9979308054997371,
+        "dice": 0.2689722814719168,
+        "iou": 0.19588359693744756,
+        "precision": 0.3068662471876959,
+        "recall": 0.29855084272279,
+        "note": "Genuine test-set evaluation of hybrid_unet_transformer_multiorgan_best.pth"
+    },
+    "runtime_metrics": {
+        "with_ground_truth": "Genuine current-slice metrics are calculated when a matching local HaN-Seg case and OAR masks are available.",
+        "without_ground_truth": "Metrics are returned as null with available=false; values are never invented."
+    },
+    "metric_definition": {
+        "accuracy": "Pixel-wise class accuracy.",
+        "dice": "Foreground Dice for all OAR pixels versus background.",
+        "iou": "Foreground Intersection over Union.",
+        "precision": "Foreground precision.",
+        "recall": "Foreground recall.",
+        "macro_organ_metrics": "Mean of per-organ metrics for organs present in prediction or ground truth."
+    },
+    "web_output": {
+        "upload": "3D NRRD upload and middle-slice preview",
+        "viewer": "Slice-by-slice CT viewing",
+        "segmentation": "31-class prediction",
+        "visualization": [
+            "Original CT",
+            "Segmentation Mask",
+            "CT + Segmentation Overlay"
+        ],
+        "oar_details": [
+            "Organ",
+            "Boundary",
+            "Center coordinates",
+            "Region",
+            "Image side",
+            "Pixel area"
+        ],
+        "location_note": "Left/Right are image-side labels based on pixel coordinates; they are not guaranteed patient anatomical left/right without explicit NRRD orientation handling."
+    },
+    "status": "COMPLETED",
+    "important_note": "Dashboard test-set metrics are separate from per-slice visualization. Current-slice detected OAR count is based on the uploaded CT slice.",
+    "model_file": "hybrid_unet_transformer_multiorgan_best.pth"
+}
