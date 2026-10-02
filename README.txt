@@ -1,17 +1,4 @@
-Absolutely. Here is the **final README.md in clear, professional English**, ready to copy directly into your GitHub repository.
-
-````markdown
-# Head and Neck Organ Segmentation using Hybrid U-Net and Transformer
-
-<p align="center">
-  <b>AI-Based Multi-Organ Segmentation of Head and Neck CT Scans</b>
-</p>
-
-<p align="center">
-  A deep learning-based system for automatic segmentation and visualization of Head and Neck Organs-at-Risk (OARs) from CT scans using a Hybrid U-Net and Transformer architecture.
-</p>
-
----
+**Head and Neck Organ Segmentation**
 
 ## 📌 Overview
 
