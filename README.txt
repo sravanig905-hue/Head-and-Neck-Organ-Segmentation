@@ -1,4 +1,4 @@
-**Head and Neck Organ Segmentation**
+# 🧠 Head and Neck Organ Segmentation using Hybrid U-Net and Transformer
 
 ## 📌 Overview
 
