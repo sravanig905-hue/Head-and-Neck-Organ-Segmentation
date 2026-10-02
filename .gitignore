@@ -2,14 +2,22 @@
 .venv312/
 __pycache__/
 *.pyc
-.env
-*.pth
 
-# Large dataset and cache directories (not needed for deployment)
 HaN-Seg/
-multi_organ_cache/
+split_dataset/
 cached_dataset/
 fast_cache/
-split_dataset/
+multi_organ_cache/
 splits/
-temp_uploads/
+
+*.nrrd
+*.seg.nrrd
+
+*.pth
+*.pt
+
+*.png
+*.jpg
+*.jpeg
+
+.env

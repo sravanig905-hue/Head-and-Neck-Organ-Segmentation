@@ -1,26 +1,13 @@
-HaN-Seg AI - FINAL DYNAMIC WEBSITE
+HaN-Seg metrics fix
 
-1. Keep this folder merged into the existing HaN_Seg_Project root.
-2. Required existing files:
-   - model/hybrid_unet_transformer.py
-   - hybrid_unet_transformer_multiorgan.pth
-   - HaN-Seg/HaN-Seg/set_1/
-   - multi_organ_cache/ (optional but recommended for faster ground truth lookup)
-3. Start backend from the project root:
-   .venv312\Scripts\Activate.ps1
-   python backend\app.py
-4. Open frontend with Live Server:
-   http://127.0.0.1:5500/frontend/index.html
+Replace your project files:
+  backend/app.py -> this backend/app.py
+  frontend/script.js -> this frontend/script.js
 
-Flow:
-Upload CT NRRD -> display real uploaded slice -> select slice -> Analyze ->
-Hybrid U-Net + Transformer -> 30-organ prediction -> original/mask/overlay ->
-OAR boundary/location/pixel area -> matching ground truth -> scan-specific metrics.
+The backend now loads:
+  hybrid_unet_transformer_multiorgan_best.pth
 
-Metrics are NOT hard-coded. Dice, IoU, Precision, Recall and Accuracy are calculated
-for the analyzed slice when matching HaN-Seg ground truth is available.
-For a CT without ground truth, segmentation/boundary output can still be generated,
-but ground-truth comparison metrics correctly show unavailable.
+The /segment_nrrd response includes test_set_metrics loaded from evaluation_metrics.json.
+The frontend dashboard cards use those genuine test-set values instead of current-slice metrics.
 
-Accuracy target 0.9600 is displayed as a project target only; it is not claimed as
-an actual measured result unless the uploaded scan calculation produces 0.9600.
+Restart backend and hard-refresh the browser after replacing the files.

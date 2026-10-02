@@ -1,5 +1,5 @@
 import os
-import glob
+import json
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -9,21 +9,35 @@ from model.hybrid_unet_transformer import HybridUNetTransformer
 
 
 # ============================================================
-# CONFIG
+# PATHS
 # ============================================================
 
-PROJECT_ROOT = r"C:\Users\Sravani\Desktop\HaN_Seg_Project"
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 MODEL_PATH = os.path.join(
     PROJECT_ROOT,
-    "hybrid_unet_transformer_multiorgan.pth"
+    "hybrid_unet_transformer_multiorgan_best.pth"
 )
 
-MAPPING_PATH = os.path.join(
+CACHE_PATH = os.path.join(
     PROJECT_ROOT,
-    "multi_organ_cache",
+    "multi_organ_cache"
+)
+
+CLASS_MAPPING_PATH = os.path.join(
+    CACHE_PATH,
     "class_mapping.txt"
 )
+
+OUTPUT_PATH = os.path.join(
+    PROJECT_ROOT,
+    "evaluation_metrics.json"
+)
+
+
+# ============================================================
+# SETTINGS
+# ============================================================
 
 NUM_CLASSES = 31
 BATCH_SIZE = 2
@@ -37,10 +51,10 @@ DEVICE = torch.device(
 # LOAD CLASS MAPPING
 # ============================================================
 
-class_mapping = {}
+class_names = {}
 
 with open(
-    MAPPING_PATH,
+    CLASS_MAPPING_PATH,
     "r",
     encoding="utf-8"
 ) as f:
@@ -52,12 +66,36 @@ with open(
         if not line:
             continue
 
-        class_id, organ = line.split(
-            " -> ",
-            1
-        )
+        parts = line.split("->")
 
-        class_mapping[int(class_id)] = organ
+        if len(parts) != 2:
+            continue
+
+        class_id = int(parts[0].strip())
+        class_name = parts[1].strip()
+
+        class_names[class_id] = class_name
+
+
+print("=" * 60)
+print("MULTI-ORGAN MODEL EVALUATION")
+print("=" * 60)
+
+print("Project root :", PROJECT_ROOT)
+print("Model        :", MODEL_PATH)
+print("Device       :", DEVICE)
+print("Classes      :", NUM_CLASSES)
+
+
+# ============================================================
+# CHECK MODEL
+# ============================================================
+
+if not os.path.exists(MODEL_PATH):
+
+    raise FileNotFoundError(
+        f"Model not found:\n{MODEL_PATH}"
+    )
 
 
 # ============================================================
@@ -66,9 +104,19 @@ with open(
 
 print("\nLoading test dataset...")
 
-test_dataset = MultiOrganDataset(
-    "test"
+test_dataset = MultiOrganDataset("test")
+
+if len(test_dataset) == 0:
+
+    raise RuntimeError(
+        "Test dataset is empty."
+    )
+
+print(
+    "TEST samples:",
+    len(test_dataset)
 )
+
 
 test_loader = DataLoader(
     test_dataset,
@@ -77,41 +125,31 @@ test_loader = DataLoader(
     num_workers=0
 )
 
-print(
-    "Test samples:",
-    len(test_dataset)
-)
-
 
 # ============================================================
 # LOAD MODEL
 # ============================================================
 
-print("\nLoading trained model...")
+print("\nLoading model...")
 
 model = HybridUNetTransformer(
     num_classes=NUM_CLASSES
 )
 
+state_dict = torch.load(
+    MODEL_PATH,
+    map_location=DEVICE
+)
+
 model.load_state_dict(
-    torch.load(
-        MODEL_PATH,
-        map_location=DEVICE
-    )
+    state_dict
 )
 
 model = model.to(DEVICE)
 
 model.eval()
 
-print(
-    "Model loaded successfully."
-)
-
-print(
-    "Device:",
-    DEVICE
-)
+print("Model loaded successfully.")
 
 
 # ============================================================
@@ -123,44 +161,54 @@ intersection = np.zeros(
     dtype=np.float64
 )
 
-predicted_pixels = np.zeros(
+pred_count = np.zeros(
     NUM_CLASSES,
     dtype=np.float64
 )
 
-ground_truth_pixels = np.zeros(
+target_count = np.zeros(
     NUM_CLASSES,
     dtype=np.float64
 )
+
+true_positive = np.zeros(
+    NUM_CLASSES,
+    dtype=np.float64
+)
+
+false_positive = np.zeros(
+    NUM_CLASSES,
+    dtype=np.float64
+)
+
+false_negative = np.zeros(
+    NUM_CLASSES,
+    dtype=np.float64
+)
+
+total_correct = 0
+total_pixels = 0
+
+processed_batches = 0
 
 
 # ============================================================
 # EVALUATION
 # ============================================================
 
-print("\n==============================================")
-print("TEST SET EVALUATION")
-print("==============================================")
+print("\nStarting evaluation...")
 
 with torch.no_grad():
 
-    for batch_index, (images, masks) in enumerate(
-        test_loader
-    ):
+    for images, masks in test_loader:
 
-        images = images.to(
-            DEVICE
-        )
+        images = images.to(DEVICE)
+        masks = masks.to(DEVICE)
 
-        masks = masks.to(
-            DEVICE
-        )
+        outputs = model(images)
 
-        outputs = model(
-            images
-        )
-
-        if outputs.dim() == 5:
+        # Safety for 5D output.
+        if outputs.ndim == 5:
             outputs = outputs.squeeze(2)
 
         predictions = torch.argmax(
@@ -168,90 +216,121 @@ with torch.no_grad():
             dim=1
         )
 
-        for class_id in range(
-            NUM_CLASSES
-        ):
 
-            pred = (
+        # ----------------------------------------------------
+        # Pixel accuracy
+        # ----------------------------------------------------
+
+        total_correct += (
+            predictions == masks
+        ).sum().item()
+
+        total_pixels += masks.numel()
+
+
+        # ----------------------------------------------------
+        # Per-class statistics
+        # ----------------------------------------------------
+
+        for class_id in range(NUM_CLASSES):
+
+            pred_class = (
                 predictions == class_id
             )
 
-            truth = (
+            target_class = (
                 masks == class_id
             )
 
-            intersection[class_id] += (
-                pred & truth
+            inter = (
+                pred_class & target_class
             ).sum().item()
 
-            predicted_pixels[class_id] += (
-                pred
+            pred_pixels = (
+                pred_class.sum().item()
+            )
+
+            target_pixels = (
+                target_class.sum().item()
+            )
+
+            intersection[class_id] += inter
+
+            pred_count[class_id] += pred_pixels
+
+            target_count[class_id] += target_pixels
+
+            true_positive[class_id] += inter
+
+            false_positive[class_id] += (
+                pred_class & ~target_class
             ).sum().item()
 
-            ground_truth_pixels[class_id] += (
-                truth
+            false_negative[class_id] += (
+                ~pred_class & target_class
             ).sum().item()
 
-        if (
-            batch_index + 1
-        ) % 20 == 0:
+
+        processed_batches += 1
+
+        if processed_batches % 50 == 0:
 
             print(
                 f"Processed batches: "
-                f"{batch_index + 1}/"
+                f"{processed_batches}/"
                 f"{len(test_loader)}"
             )
 
 
 # ============================================================
-# CALCULATE METRICS
+# PIXEL ACCURACY
 # ============================================================
 
-results = {}
-
-all_dice = []
-all_iou = []
-all_precision = []
-all_recall = []
+pixel_accuracy = (
+    total_correct /
+    max(total_pixels, 1)
+)
 
 
-for class_id in range(
-    1,
-    NUM_CLASSES
-):
+# ============================================================
+# PER-ORGAN METRICS
+# ============================================================
 
-    organ = class_mapping.get(
+per_organ = {}
+
+dice_values = []
+iou_values = []
+precision_values = []
+recall_values = []
+
+
+for class_id in range(1, NUM_CLASSES):
+
+    name = class_names.get(
         class_id,
         f"Class_{class_id}"
     )
 
-    inter = intersection[
-        class_id
-    ]
+    inter = intersection[class_id]
 
-    pred_count = predicted_pixels[
-        class_id
-    ]
+    pred_pixels = pred_count[class_id]
 
-    truth_count = ground_truth_pixels[
-        class_id
-    ]
+    target_pixels = target_count[class_id]
 
-    union = (
-        pred_count
-        +
-        truth_count
-        -
-        inter
-    )
+    tp = true_positive[class_id]
+
+    fp = false_positive[class_id]
+
+    fn = false_negative[class_id]
+
 
     # --------------------------------------------------------
     # Dice
     # --------------------------------------------------------
 
     if (
-        pred_count == 0
-        and truth_count == 0
+        pred_pixels == 0
+        and target_pixels == 0
     ):
 
         dice = 1.0
@@ -261,13 +340,22 @@ for class_id in range(
         dice = (
             2.0 * inter
             /
-            (pred_count + truth_count + 1e-8)
+            max(
+                pred_pixels + target_pixels,
+                1e-12
+            )
         )
 
 
     # --------------------------------------------------------
     # IoU
     # --------------------------------------------------------
+
+    union = (
+        pred_pixels
+        + target_pixels
+        - inter
+    )
 
     if union == 0:
 
@@ -276,9 +364,8 @@ for class_id in range(
     else:
 
         iou = (
-            inter
-            /
-            (union + 1e-8)
+            inter /
+            union
         )
 
 
@@ -286,16 +373,17 @@ for class_id in range(
     # Precision
     # --------------------------------------------------------
 
-    if pred_count == 0:
+    if (
+        tp + fp == 0
+    ):
 
-        precision = 0.0
+        precision = 1.0 if target_pixels == 0 else 0.0
 
     else:
 
         precision = (
-            inter
-            /
-            (pred_count + 1e-8)
+            tp /
+            (tp + fp)
         )
 
 
@@ -303,203 +391,195 @@ for class_id in range(
     # Recall
     # --------------------------------------------------------
 
-    if truth_count == 0:
+    if (
+        tp + fn == 0
+    ):
 
-        recall = 0.0
+        recall = 1.0 if target_pixels == 0 else 0.0
 
     else:
 
         recall = (
-            inter
-            /
-            (truth_count + 1e-8)
+            tp /
+            (tp + fn)
         )
 
 
-    results[organ] = {
+    per_organ[name] = {
+
         "class_id": class_id,
+
         "dice": float(dice),
+
         "iou": float(iou),
+
         "precision": float(precision),
-        "recall": float(recall)
+
+        "recall": float(recall),
+
+        "predicted_pixels": int(pred_pixels),
+
+        "ground_truth_pixels": int(target_pixels)
     }
 
 
-    all_dice.append(dice)
-    all_iou.append(iou)
-    all_precision.append(precision)
-    all_recall.append(recall)
+    # Include classes that exist in ground truth.
+    if target_pixels > 0:
+
+        dice_values.append(dice)
+
+        iou_values.append(iou)
+
+        precision_values.append(precision)
+
+        recall_values.append(recall)
 
 
 # ============================================================
-# OVERALL RESULTS
+# MACRO METRICS
 # ============================================================
 
-overall = {
+mean_dice = (
+    float(np.mean(dice_values))
+    if dice_values
+    else 0.0
+)
 
-    "dice": float(
-        np.mean(all_dice)
-    ),
+mean_iou = (
+    float(np.mean(iou_values))
+    if iou_values
+    else 0.0
+)
 
-    "iou": float(
-        np.mean(all_iou)
-    ),
+mean_precision = (
+    float(np.mean(precision_values))
+    if precision_values
+    else 0.0
+)
 
-    "precision": float(
-        np.mean(all_precision)
-    ),
-
-    "recall": float(
-        np.mean(all_recall)
-    )
-}
+mean_recall = (
+    float(np.mean(recall_values))
+    if recall_values
+    else 0.0
+)
 
 
 # ============================================================
 # PRINT RESULTS
 # ============================================================
 
-print("\n==============================================")
-print("ORGAN-WISE RESULTS")
-print("==============================================")
+print("\n")
+print("=" * 60)
+print("FINAL EVALUATION RESULTS")
+print("=" * 60)
 
 print(
-    f"{'ID':<5}"
-    f"{'Organ':<25}"
-    f"{'Dice':<10}"
-    f"{'IoU':<10}"
-    f"{'Precision':<12}"
-    f"{'Recall':<10}"
+    f"Pixel Accuracy : "
+    f"{pixel_accuracy:.4f} "
+    f"({pixel_accuracy * 100:.2f}%)"
 )
 
-print("-" * 75)
+print(
+    f"Mean Dice      : "
+    f"{mean_dice:.4f}"
+)
+
+print(
+    f"Mean IoU       : "
+    f"{mean_iou:.4f}"
+)
+
+print(
+    f"Mean Precision : "
+    f"{mean_precision:.4f}"
+)
+
+print(
+    f"Mean Recall    : "
+    f"{mean_recall:.4f}"
+)
 
 
-for organ, metrics in results.items():
+# ============================================================
+# PER-ORGAN RESULTS
+# ============================================================
+
+print("\n")
+print("=" * 80)
+print("PER-ORGAN RESULTS")
+print("=" * 80)
+
+for name, metrics in per_organ.items():
 
     print(
-        f"{metrics['class_id']:<5}"
-        f"{organ:<25}"
-        f"{metrics['dice']:.4f}    "
-        f"{metrics['iou']:.4f}    "
-        f"{metrics['precision']:.4f}       "
-        f"{metrics['recall']:.4f}"
+        f"{name:<20} | "
+        f"Dice: {metrics['dice']:.4f} | "
+        f"IoU: {metrics['iou']:.4f} | "
+        f"Precision: {metrics['precision']:.4f} | "
+        f"Recall: {metrics['recall']:.4f}"
     )
 
 
 # ============================================================
-# OVERALL
+# SAVE JSON
 # ============================================================
 
-print("\n==============================================")
-print("OVERALL TEST RESULTS")
-print("==============================================")
+results = {
 
-print(
-    f"Mean Dice      : {overall['dice']:.4f}"
-)
+    "model":
+        "Hybrid U-Net + Transformer",
 
-print(
-    f"Mean IoU       : {overall['iou']:.4f}"
-)
+    "model_file":
+        os.path.basename(MODEL_PATH),
 
-print(
-    f"Mean Precision : {overall['precision']:.4f}"
-)
+    "num_classes":
+        NUM_CLASSES,
 
-print(
-    f"Mean Recall    : {overall['recall']:.4f}"
-)
+    "test_samples":
+        len(test_dataset),
 
+    "pixel_accuracy":
+        float(pixel_accuracy),
 
-# ============================================================
-# SAVE RESULTS
-# ============================================================
+    "mean_dice":
+        mean_dice,
 
-output_file = os.path.join(
-    PROJECT_ROOT,
-    "evaluation_metrics.txt"
-)
+    "mean_iou":
+        mean_iou,
+
+    "mean_precision":
+        mean_precision,
+
+    "mean_recall":
+        mean_recall,
+
+    "per_organ":
+        per_organ
+}
+
 
 with open(
-    output_file,
+    OUTPUT_PATH,
     "w",
     encoding="utf-8"
 ) as f:
 
-    f.write(
-        "MULTI-ORGAN SEGMENTATION "
-        "EVALUATION\n"
+    json.dump(
+        results,
+        f,
+        indent=4
     )
 
-    f.write(
-        "====================================\n\n"
-    )
 
-    f.write(
-        f"Mean Dice      : "
-        f"{overall['dice']:.4f}\n"
-    )
-
-    f.write(
-        f"Mean IoU       : "
-        f"{overall['iou']:.4f}\n"
-    )
-
-    f.write(
-        f"Mean Precision : "
-        f"{overall['precision']:.4f}\n"
-    )
-
-    f.write(
-        f"Mean Recall    : "
-        f"{overall['recall']:.4f}\n\n"
-    )
-
-    f.write(
-        "ORGAN-WISE RESULTS\n"
-    )
-
-    f.write(
-        "------------------------------------\n"
-    )
-
-    for organ, metrics in results.items():
-
-        f.write(
-            f"\n{organ}\n"
-        )
-
-        f.write(
-            f"Class ID  : "
-            f"{metrics['class_id']}\n"
-        )
-
-        f.write(
-            f"Dice      : "
-            f"{metrics['dice']:.4f}\n"
-        )
-
-        f.write(
-            f"IoU       : "
-            f"{metrics['iou']:.4f}\n"
-        )
-
-        f.write(
-            f"Precision : "
-            f"{metrics['precision']:.4f}\n"
-        )
-
-        f.write(
-            f"Recall    : "
-            f"{metrics['recall']:.4f}\n"
-        )
-
-
-print("\nResults saved to:")
+print("\n")
+print("=" * 60)
+print("EVALUATION COMPLETED")
+print("=" * 60)
 
 print(
-    output_file
+    "Metrics saved to:"
 )
 
-print("\nEVALUATION COMPLETED!")
+print(
+    OUTPUT_PATH
+)

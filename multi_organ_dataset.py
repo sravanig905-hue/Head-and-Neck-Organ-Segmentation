@@ -1,17 +1,26 @@
 import os
-import glob
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
 
-PROJECT_ROOT = r"C:\Users\Sravani\Desktop\HaN_Seg_Project"
+# ============================================================
+# PATH
+# ============================================================
+
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
 
 CACHE_PATH = os.path.join(
-    PROJECT_ROOT,
+    BASE_DIR,
     "multi_organ_cache"
 )
 
+
+# ============================================================
+# MULTI-ORGAN DATASET
+# ============================================================
 
 class MultiOrganDataset(Dataset):
 
@@ -19,98 +28,149 @@ class MultiOrganDataset(Dataset):
 
         self.split = split
 
-        split_path = os.path.join(
+        self.split_dir = os.path.join(
             CACHE_PATH,
             split
         )
 
         self.samples = []
 
-        case_folders = sorted(
-            glob.glob(
-                os.path.join(
-                    split_path,
-                    "case_*"
-                )
-            )
-        )
+        if not os.path.exists(self.split_dir):
 
-        for case_folder in case_folders:
-
-            image_files = sorted(
-                glob.glob(
-                    os.path.join(
-                        case_folder,
-                        "*_image.npy"
-                    )
-                )
+            print(
+                f"WARNING: Directory not found: "
+                f"{self.split_dir}"
             )
 
-            for image_file in image_files:
+            return
 
-                mask_file = image_file.replace(
+        # ----------------------------------------------------
+        # Search recursively inside case folders
+        # ----------------------------------------------------
+
+        for root, dirs, files in os.walk(
+            self.split_dir
+        ):
+
+            for filename in files:
+
+                if not filename.endswith(
+                    "_image.npy"
+                ):
+                    continue
+
+                image_path = os.path.join(
+                    root,
+                    filename
+                )
+
+                mask_filename = filename.replace(
                     "_image.npy",
                     "_mask.npy"
                 )
 
-                if os.path.exists(mask_file):
+                mask_path = os.path.join(
+                    root,
+                    mask_filename
+                )
+
+                if os.path.exists(mask_path):
 
                     self.samples.append(
                         (
-                            image_file,
-                            mask_file
+                            image_path,
+                            mask_path
                         )
                     )
 
+        # ----------------------------------------------------
+        # Sort for reproducibility
+        # ----------------------------------------------------
+
+        self.samples.sort()
+
         print(
-            f"{split.upper()} samples: "
-            f"{len(self.samples)}"
+            f"{split.upper()} samples:",
+            len(self.samples)
         )
 
+
+    # ========================================================
+    # LENGTH
+    # ========================================================
 
     def __len__(self):
 
         return len(self.samples)
 
 
+    # ========================================================
+    # GET ITEM
+    # ========================================================
+
     def __getitem__(self, index):
 
-        image_file, mask_file = self.samples[index]
+        image_path, mask_path = (
+            self.samples[index]
+        )
+
+        # ----------------------------------------------------
+        # Load image
+        # ----------------------------------------------------
 
         image = np.load(
-            image_file
+            image_path
         ).astype(
             np.float32
         )
 
+        # ----------------------------------------------------
+        # Load mask
+        # ----------------------------------------------------
+
         mask = np.load(
-            mask_file
+            mask_path
         ).astype(
             np.int64
         )
 
-        # Add channel dimension
-        # [256,256] -> [1,256,256]
+        # ----------------------------------------------------
+        # Image shape
+        # [H,W] → [1,H,W]
+        # ----------------------------------------------------
+
+        if image.ndim == 2:
+
+            image = np.expand_dims(
+                image,
+                axis=0
+            )
 
         image = torch.from_numpy(
             image
-        ).unsqueeze(0)
-
-        # Mask remains:
-        # [256,256]
+        ).float()
 
         mask = torch.from_numpy(
             mask
-        )
+        ).long()
 
         return image, mask
 
 
 # ============================================================
-# TEST DATASET
+# TEST
 # ============================================================
 
 if __name__ == "__main__":
+
+    print("=" * 60)
+    print("MULTI-ORGAN DATASET TEST")
+    print("=" * 60)
+
+    print(
+        "Cache path:",
+        CACHE_PATH
+    )
 
     train_dataset = MultiOrganDataset(
         "train"
@@ -124,64 +184,60 @@ if __name__ == "__main__":
         "test"
     )
 
-    print("\n======================================")
-    print("MULTI-ORGAN DATASET TEST")
-    print("======================================")
+    print()
+    print(
+        "TRAIN samples:",
+        len(train_dataset)
+    )
+
+    print(
+        "VAL samples:",
+        len(val_dataset)
+    )
+
+    print(
+        "TEST samples:",
+        len(test_dataset)
+    )
 
     if len(train_dataset) > 0:
 
-        image, mask = train_dataset[0]
+        images, masks = train_dataset[0]
 
+        print()
         print(
-            "Image shape:",
-            image.shape
+            "Sample image shape:",
+            images.shape
         )
 
         print(
-            "Mask shape :",
-            mask.shape
+            "Sample mask shape:",
+            masks.shape
         )
 
         print(
             "Image dtype:",
-            image.dtype
+            images.dtype
         )
 
         print(
-            "Mask dtype :",
-            mask.dtype
+            "Mask dtype:",
+            masks.dtype
         )
 
         print(
             "Mask classes:",
-            torch.unique(mask).tolist()
+            torch.unique(masks).tolist()
         )
 
-    # --------------------------------------------------------
-    # DataLoader test
-    # --------------------------------------------------------
+        print()
+        print(
+            "DATASET LOADER READY!"
+        )
 
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=2,
-        shuffle=True,
-        num_workers=0
-    )
+    else:
 
-    images, masks = next(
-        iter(train_loader)
-    )
-
-    print("\nDataLoader test:")
-
-    print(
-        "Batch images:",
-        images.shape
-    )
-
-    print(
-        "Batch masks :",
-        masks.shape
-    )
-
-    print("\nDATASET LOADER READY!")
+        print()
+        print(
+            "ERROR: TRAIN DATASET IS EMPTY!"
+        )

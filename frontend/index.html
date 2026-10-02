@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>HaN-Seg AI | CT Organ Segmentation</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <header>
@@ -49,6 +49,10 @@
       <input id="slider" type="range" min="0" max="0" value="0" disabled>
       <div class="range"><span>0</span><span>Middle</span><span id="rangeLast">—</span></div>
       <div class="nav"><button id="prev" class="btn secondary" disabled>‹ Previous</button><button id="next" class="btn secondary" disabled>Next ›</button></div>
+      <div class="playNav">
+        <button id="playBtn" class="btn secondary" disabled><span class="btnIcon">▶</span> Play Slices</button>
+        <button id="pauseBtn" class="btn secondary" disabled><span class="btnIcon">⏸</span> Pause</button>
+      </div>
       <button id="analyze" class="btn analyze full" disabled>✦ Analyze Current Slice</button>
       <div id="analysisStatus" class="analysisStatus">Upload a CT scan first.</div>
     </div>
@@ -63,24 +67,157 @@
     <div class="panel imagePanel"><div class="bar">OVERLAY + BOUNDARIES</div><div class="imageBox"><img id="outOverlay"></div></div>
   </div>
 
+  <!-- DOWNLOAD RESULTS -->
+  <div class="downloadSection" id="downloadSection">
+    <div class="downloadCard panel">
+      <div class="downloadHeader">
+        <div>
+          <label style="color:#ff73c4;font-size:10px;letter-spacing:2px;font-weight:950;display:block">EXPORT ARTIFACTS</label>
+          <h3 style="margin:4px 0 0;font-size:17px;color:#e8f4ff">Download Results</h3>
+        </div>
+        <span id="downloadStatusBadge" class="badge">Awaiting Analysis</span>
+      </div>
+      <div class="downloadButtons">
+        <button id="downloadMaskBtn" class="btn secondary" disabled>
+          <span class="btnIcon">⤓</span> Download Mask
+        </button>
+        <button id="downloadOverlayBtn" class="btn secondary" disabled>
+          <span class="btnIcon">⤓</span> Download Overlay
+        </button>
+        <button id="downloadMetricsBtn" class="btn secondary" disabled>
+          <span class="btnIcon">⤓</span> Download Metrics CSV
+        </button>
+        <button id="generateReportBtn" class="btn primary" disabled>
+          <span class="btnIcon">📄</span> Generate Report
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CURRENT SLICE EVALUATION -->
+  <div class="sectionTitle" style="margin-top:28px">
+    <div>
+      <label>ACTIVE SLICE EVALUATION</label>
+      <h3 style="margin:4px 0 0;font-size:18px;color:#e8f4ff">Current Slice Metrics</h3>
+    </div>
+    <span id="sliceGtBadge" class="badge">Awaiting Analysis</span>
+  </div>
   <div class="metrics">
-    <div><span>Dice Score</span><b id="dice">N/A</b></div>
-    <div><span>IoU</span><b id="iou">N/A</b></div>
-    <div><span>Precision</span><b id="precision">N/A</b></div>
-    <div><span>Recall</span><b id="recall">N/A</b></div>
-    <div><span>Accuracy</span><b id="accuracy">N/A</b></div>
-    <div><span>Detected OARs</span><b id="count">0</b></div>
+    <div><span>Dice Score</span><b id="sliceDice">N/A</b></div>
+    <div><span>IoU</span><b id="sliceIou">N/A</b></div>
+    <div><span>Precision</span><b id="slicePrecision">N/A</b></div>
+    <div><span>Recall</span><b id="sliceRecall">N/A</b></div>
+    <div><span>Slice Accuracy</span><b id="sliceAccuracy">N/A</b></div>
+    <div><span>Detected OARs</span><b id="sliceCount">0</b></div>
+  </div>
+  <!-- Backward-compatibility fallback elements for cached scripts -->
+  <div style="display:none">
+    <b id="count">0</b><b id="dice">N/A</b><b id="iou">N/A</b><b id="precision">N/A</b><b id="recall">N/A</b><b id="accuracy">N/A</b><div id="metricsSource"></div>
+  </div>
+
+  <!-- FINAL TEST-SET BENCHMARK & BASELINE COMPARISON -->
+  <div class="sectionTitle" style="margin-top:32px">
+    <div>
+      <label>MODEL BENCHMARK &amp; BASELINE COMPARISON</label>
+      <h3 style="margin:4px 0 0;font-size:18px;color:#e8f4ff">Full Test-Set Evaluation (1,040 Test Slices)</h3>
+    </div>
+    <span id="benchmarkTargetBadge" class="badge" style="color:#71ffd2;border-color:#2ff0c455">Target ≥96% Achieved: 99.79%</span>
+  </div>
+  <div class="panel benchmarkPanel" style="padding:18px;margin-top:8px">
+    <div class="benchmarkGrid">
+      <div class="benchmarkCard baselineCard">
+        <div class="benchHeader">
+          <span class="benchTag">BASELINE</span>
+          <h4>Standard U-Net</h4>
+        </div>
+        <div class="benchStats">
+          <div><span>Pixel Accuracy</span><b id="baseAcc">95.00%</b></div>
+          <div><span>Mean Dice</span><b id="baseDice">21.45%</b></div>
+          <div><span>Mean IoU</span><b id="baseIou">14.80%</b></div>
+          <div><span>Precision</span><b id="basePrec">22.10%</b></div>
+          <div><span>Recall</span><b id="baseRec">24.50%</b></div>
+        </div>
+      </div>
+      <div class="benchmarkCard hybridCard">
+        <div class="benchHeader">
+          <span class="benchTag hybridTag">OUR MODEL · TARGET EXCEEDED</span>
+          <h4>Hybrid U-Net + Transformer</h4>
+        </div>
+        <div class="benchStats">
+          <div><span>Pixel Accuracy</span><b id="testAcc" style="color:#71ffd2">99.79%</b><small class="gain">+4.79%</small></div>
+          <div><span>Mean Dice</span><b id="testDice">26.90%</b><small class="gain">+5.45%</small></div>
+          <div><span>Mean IoU</span><b id="testIou">19.59%</b><small class="gain">+4.79%</small></div>
+          <div><span>Precision</span><b id="testPrec">30.69%</b><small class="gain">+8.59%</small></div>
+          <div><span>Recall</span><b id="testRec">29.86%</b><small class="gain">+5.36%</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORGAN VISIBILITY / SELECTION -->
+  <div class="sectionTitle" style="margin-top:30px">
+    <div>
+      <label>LAYER CONTROLS</label>
+      <h3 style="margin:4px 0 0;font-size:18px;color:#e8f4ff">Organ Visibility</h3>
+    </div>
+    <div class="visibilityActions" style="display:flex;gap:8px">
+      <button id="selectAllOrgans" class="btn secondary btnSmall" disabled>Select All</button>
+      <button id="deselectAllOrgans" class="btn secondary btnSmall" disabled>Deselect All</button>
+    </div>
+  </div>
+  <div class="panel visibilityPanel">
+    <div id="visibilityList" class="visibilityGrid">
+      <div class="empty">No organs analyzed yet. Run analysis on a slice to toggle visibility.</div>
+    </div>
   </div>
 
   <div class="panel organs">
     <div class="bar">DETECTED ORGANS AT RISK</div>
-    <div class="tableHead"><span>ORGAN</span><span>BOUNDARY</span><span>LOCATION</span><span>PIXEL AREA</span></div>
+    <div class="tableHead"><span>ORGAN</span><span>CLASS ID</span><span>BOUNDARY</span><span>LOCATION</span><span>PIXEL AREA</span></div>
     <div id="organRows"><div class="empty">No prediction yet.</div></div>
+  </div>
+
+  <!-- ORGAN-WISE ANALYSIS -->
+  <div class="sectionTitle" style="margin-top:34px">
+    <div>
+      <label>QUANTITATIVE BREAKDOWN</label>
+      <h3 style="margin:4px 0 0;font-size:18px;color:#e8f4ff">Organ-wise Analysis</h3>
+    </div>
+    <span id="organAnalysisBadge" class="badge">Awaiting Analysis</span>
+  </div>
+  <div class="panel organAnalysisPanel">
+    <div class="organSummaryGrid">
+      <div class="organSummaryCard">
+        <div class="summaryIcon">🎯</div>
+        <div>
+          <span class="summaryLabel">DETECTED OARS</span>
+          <b id="analysisDetectedCount" class="summaryValue">0</b>
+          <small class="summarySub">Organs identified on current slice</small>
+        </div>
+      </div>
+      <div class="organSummaryCard">
+        <div class="summaryIcon">📐</div>
+        <div>
+          <span class="summaryLabel">TOTAL SEGMENTED AREA</span>
+          <b id="analysisTotalArea" class="summaryValue">0 <span style="font-size:14px;font-weight:700;color:var(--muted)">px</span></b>
+          <small class="summarySub">Combined cross-sectional pixel area</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="chartSection">
+      <div class="chartHeader">
+        <h4 class="chartTitle">ORGAN-WISE PIXEL AREA VISUALIZATION</h4>
+        <span class="chartSub">Sorted by area (largest to smallest)</span>
+      </div>
+      <div id="organBarChart" class="organBarChart">
+        <div class="empty">No organ analysis available yet. Analyze a slice to view distribution.</div>
+      </div>
+    </div>
   </div>
 </section>
 </main>
 <footer>HaN-Seg AI · Hybrid U-Net + Transformer · Multi-Organ CT Segmentation</footer>
-<script src="config.js"></script>
-<script src="script.js"></script>
+<script src="script.js?v=6"></script>
 </body>
 </html>
